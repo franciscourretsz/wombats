@@ -61,10 +61,10 @@ function buildGroups(rows){
  const named=new Map(),fallback=new Map(),seen=new Set();
  for(const row of rows){if(!["confirmed","checked in","checked out"].includes(norm(row.Status).trim()))continue;const id=String(row.Number??"").trim();if(id&&seen.has(id))continue;if(id)seen.add(id);const a=dateKey(row.Arrival),b=dateKey(row.Departure),p=Number(row["Person count"]);if(!a||!b||!Number.isInteger(p)||p<1)continue;
  const group=String(row["Group name"]??"").trim(),name=String(row["Customer name"]||row["Customer"]||row["Name"]||row["Booker name"]||[row["First name"],row["Last name"]].filter(Boolean).join(" ")||"").trim();
- const item={a,b,p,space:String(row["Space number"]??"").trim(),notes:[row.Notes,row["Customer notes"]].map(v=>String(v??"")).join("\n")};
+ const item={a,b,p,official:norm(row.Segment).trim()==="groups"||!!(group&&!/-\d{1,2}-\d{1,2}-[a-z0-9]+$/i.test(group)),space:String(row["Space number"]??"").trim(),notes:[row.Notes,row["Customer notes"]].map(v=>String(v??"")).join("\n")};
  const map=group?named:fallback,key=group?norm(group):name?norm(name)+"|"+a+"|"+b:Symbol();if(!map.has(key))map.set(key,[]);map.get(key).push(item);
  }
- const result=[];for(const members of [...named.values(),...Array.from(fallback.values()).filter(m=>m.reduce((n,r)=>n+r.p,0)>5)]){
+ const result=[];for(const members of [...Array.from(named.values()).filter(m=>m.some(r=>r.official)||m.reduce((n,r)=>n+r.p,0)>5),...Array.from(fallback.values()).filter(m=>m.reduce((n,r)=>n+r.p,0)>5)]){
  const guests=members.reduce((n,r)=>n+r.p,0),a=members.map(r=>r.a).sort()[0],b=members.map(r=>r.b).sort().at(-1),rooms=new Map(),slots=new Map(),arrivalTimes=new Set(),dates=[...new Set(members.flatMap(r=>range(next(r.a),r.b)))];
  for(const r of members){const room=r.space?spaceParts(r.space).room:"";rooms.set(room,(rooms.get(room)||0)+r.p)}
  for(const line of new Set(members.flatMap(r=>r.notes.split(/[\n;]+/)))){if(negative.test(norm(line)))continue;
